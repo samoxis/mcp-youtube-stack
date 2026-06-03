@@ -173,4 +173,4 @@ Every tool returns either a success dict or `{"error": "..."}`. This keeps the s
 Built and operated by **Sorin Hinceanu** — thirteen years in telecoms infrastructure field engineering (Openreach FTTP, ranked top contractor of 200+), now building agentic AI tooling and self-hosted MCP infrastructure end-to-end.
 
 - Location — London, UK
-- Email — sorin.hinceanu@gmail.com
+- Email — sorinbrocker@yahoo.com
