@@ -1,0 +1,43 @@
+# Secrets — NEVER commit
+*.pickle
+client_secret*.json
+google_oauth_client.json
+credentials.json
+.env
+.env.*
+*.key
+*.pem
+
+# Cloudflare tunnel credentials
+*.tunnel.json
+*.cloudflared.json
+
+# Local config dirs (hold OAuth tokens + client secrets)
+config/
+**/config/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+.venv-*/
+venv/
+env/
+.uv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs + runtime
+*.log
+logs/
