@@ -1,12 +1,12 @@
 # Self-Hosted MCP Server Stack
 
-Two production [Model Context Protocol](https://modelcontextprotocol.io) servers built on [FastMCP](https://github.com/jlowin/fastmcp), running 24/7 behind a single Cloudflare Tunnel and reachable by Claude Desktop, Claude.ai, and any other MCP client.
+Two production [Model Context Protocol](https://modelcontextprotocol.io) servers built on [FastMCP](https://github.com/jlowin/fastmcp), running 24/7 behind a single Cloudflare Tunnel and reachable by any MCP-compatible client (Claude Desktop, Cursor, Cline, VS Code, etc.).
 
 **Live endpoints**
 - YouTube MCP — `https://yt.thevictoriacross.net/mcp`
 - YouTube Playlist MCP — `https://pl.thevictoriacross.net/mcp` (OAuth)
 
-**Status** — Production. In daily use across multiple Claude clients.
+**Status** — Production. In daily use across multiple MCP clients.
 
 ---
 
@@ -42,7 +42,7 @@ Per-user, via Google OAuth 2.0:
 ## Architecture
 
 ```
-   Claude Desktop / Claude.ai / any MCP client
+   MCP-compatible client (Cursor, Cline, Claude Desktop, etc.)
                   │
                   │  HTTPS  (MCP Streamable HTTP transport)
                   ▼
@@ -58,7 +58,7 @@ Per-user, via Google OAuth 2.0:
 ### Why this shape
 
 **HTTP transport, not stdio.**
-stdio MCP only works for a Claude instance on the same machine. HTTP transport means any MCP client — Claude Desktop on another laptop, Claude.ai in a browser, a teammate's setup — reaches the same server. The cost is needing TLS and an inbound path; Cloudflare Tunnel solves both without exposing a port.
+stdio MCP only works for a client on the same machine. HTTP transport means any MCP client — on another laptop, in a browser, on a teammate's setup — reaches the same server. The cost is needing TLS and an inbound path; Cloudflare Tunnel solves both without exposing a port.
 
 **Cloudflare Tunnel over port forwarding.**
 No router config, no static IP, automatic TLS via Cloudflare's cert, free tier. The host never accepts inbound connections — it dials out to the edge. For a home-hosted service that authenticates to Google OAuth, this is the cleanest secure path.
@@ -115,7 +115,7 @@ python youtube-playlist/youtube_playlist_mcp.py --port 8003
 
 ### Connect from a client
 
-Add to your MCP client config (Claude Desktop example):
+Add to your MCP client config (the example below uses Claude Desktop's `claude_desktop_config.json` format — Cursor, Cline, and other clients use similar structures):
 
 ```json
 {
