@@ -96,8 +96,8 @@ The MCP client never sees Google credentials. Refresh handled automatically on t
 
 ```bash
 # 1. Clone + install
-git clone https://github.com/<your-username>/mcp-stack.git
-cd mcp-stack
+git clone https://github.com/<your-username>/mcp-youtube-stack.git
+cd mcp-youtube-stack
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # Linux/macOS
