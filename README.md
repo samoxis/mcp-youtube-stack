@@ -170,7 +170,7 @@ Every tool returns either a success dict or `{"error": "..."}`. This keeps the s
 
 ## About
 
-Built and operated by **Sorin Hinceanu** — thirteen years in telecoms infrastructure field engineering (Openreach FTTP, ranked top contractor of 200+ at OCU Group), now building agentic AI tooling and self-hosted MCP infrastructure end-to-end.
+Built and operated by **Sorin Hinceanu** — thirteen years in telecoms infrastructure field engineering (Openreach FTTP, ranked top contractor of 200+), now building agentic AI tooling and self-hosted MCP infrastructure end-to-end.
 
-- Location — Romford, London
+- Location — London, UK
 - Email — sorin.hinceanu@gmail.com
