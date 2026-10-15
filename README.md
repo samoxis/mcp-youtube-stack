@@ -165,17 +165,3 @@ The threat model for a single-user service running on the owner's machine is "fi
 
 **ADR-006 — Errors as return values, not exceptions.**
 Every tool returns either a success dict or `{"error": "..."}`. This keeps the surface predictable for the LLM consuming these tools. Internal exceptions are caught and serialised with their type name and message.
-
----
-
-## Roadmap
-
-- [x] **Independent ARM64 YouTube deployment** — systemd, dedicated tunnel,
-  bearer authentication, cache and Claude connector discovery.
-- [ ] **Claude conversation and Android/PC-off acceptance** — the full chat test has not been completed. Old PC YouTube service retirement is separate.
-- [ ] **Eval suite** — structured tests for tool correctness (transcript fidelity, playlist mutations idempotent under retry), regression-tracked across deployments. LLM-as-Judge for transcript-quality scoring.
-- [ ] **RAG surface** — a third server adding transcript retrieval + synthesis, turning the stack into a working RAG-over-MCP demo.
-- [ ] **First-class OAuth callback** — current flow relies on a locally bound port; move to a portable headless flow for cloud deployment.
-- [ ] **Observability** — Cloudflare analytics on tunnel uptime + per-tool latency, exported.
-
----
