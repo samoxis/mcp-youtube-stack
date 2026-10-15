@@ -1,6 +1,6 @@
 """
 YouTube Playlist MCP Server - HTTP transport
-Requires OAuth2 credentials for sorinbrocker@gmail.com.
+Requires OAuth2 credentials for the playlist owner's Google account.
 
 Tools:
   - youtube_playlist_create(title, description, privacy='private')
@@ -18,6 +18,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 from fastmcp import FastMCP
+from fastmcp.server.auth.providers.jwt import JWTVerifier
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -31,7 +32,13 @@ CREDS_DIR = Path(os.environ.get("MCP_CONFIG_DIR", Path(__file__).parent / "confi
 CLIENT_SECRETS_FILE = CREDS_DIR / "google_oauth_client.json"
 TOKEN_FILE = CREDS_DIR / "youtube_token.pickle"
 
-mcp = FastMCP("youtube_playlist_mcp_server")
+auth = JWTVerifier(
+    public_key=Path(os.environ["MCP_AUTH_PUBLIC_KEY_FILE"]).read_text(encoding="utf-8"),
+    issuer="samoxis-mcp",
+    audience="youtube-playlist",
+    algorithm="RS256",
+)
+mcp = FastMCP("youtube_playlist_mcp_server", auth=auth)
 
 
 def _extract_video_id(url: str) -> str:
