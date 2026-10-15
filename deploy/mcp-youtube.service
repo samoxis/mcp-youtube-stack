@@ -1,0 +1,42 @@
+[Unit]
+Description=Independent authenticated YouTube MCP
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=mcp-youtube
+Group=mcp-youtube
+WorkingDirectory=/opt/mcp-youtube
+EnvironmentFile=/etc/mcp-youtube/service.env
+ExecStart=/opt/mcp-youtube/venv/bin/python -B /opt/mcp-youtube/youtube/youtube_mcp.py --host 127.0.0.1 --port 8002
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=mcp-youtube
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/mcp-youtube
+InaccessiblePaths=/etc/mcp-youtube/admin
+CPUQuota=100%
+MemoryMax=768M
+TasksMax=64
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcp-youtube
+
+[Install]
+WantedBy=multi-user.target

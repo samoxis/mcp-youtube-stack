@@ -41,3 +41,15 @@ desktop.ini
 # Logs + runtime
 *.log
 logs/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Deployment credentials and private recovery artifacts
+secrets/
+*.token
+*bearer*.txt
+tunnel.json
+*.backup.json
+.pytest_cache/

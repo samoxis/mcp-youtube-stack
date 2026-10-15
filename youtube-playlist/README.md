@@ -3,6 +3,10 @@
 Authenticated YouTube playlist management via Google OAuth 2.0.
 See [root README](../README.md) for architecture and decision records.
 
+The source now requires MCP bearer authentication in addition to Google OAuth.
+This authentication change is prepared/tested but has not been deployed to the
+existing Playlist service. See [rollout status](../AUTH-ROLLOUT.md).
+
 ## Setup
 
 1. Create a Desktop OAuth client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
@@ -14,6 +18,8 @@ Override the config location with the `MCP_CONFIG_DIR` env var if needed.
 ## Run
 
 ```bash
+# Linux/macOS bash; provide an RSA public verification key first.
+export MCP_AUTH_PUBLIC_KEY_FILE=/path/to/playlist-public.pem
 python youtube_playlist_mcp.py --port 8003 --host 127.0.0.1
 ```
 
@@ -31,3 +37,6 @@ On the first authenticated call, a browser window opens for OAuth authorisation.
 ## API quota note
 
 YouTube Data API has a daily quota (default 10,000 units). Search costs 100 units per call; inserts cost 50. `youtube_playlist_search_and_add` uses yt-dlp for the search step (zero quota cost) and the API only for the inserts — letting you search-and-add 20+ videos in one tool call without burning the daily budget.
+
+Every MCP request needs an RS256 bearer with issuer `samoxis-mcp` and audience
+`youtube-playlist`. Google OAuth does not authenticate the remote MCP client.

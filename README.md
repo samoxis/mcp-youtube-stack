@@ -1,12 +1,17 @@
 # Self-Hosted MCP Server Stack
 
-Two production [Model Context Protocol](https://modelcontextprotocol.io) servers built on [FastMCP](https://github.com/jlowin/fastmcp), running 24/7 behind a single Cloudflare Tunnel and reachable by any MCP-compatible client (Claude Desktop, Cursor, Cline, VS Code, etc.).
+Two [Model Context Protocol](https://modelcontextprotocol.io) servers built on [FastMCP](https://github.com/jlowin/fastmcp): read-only YouTube tools and separate Google OAuth playlist management. Clients must support the required bearer authentication.
 
-**Live endpoints**
-- YouTube MCP — `https://yt.thevictoriacross.net/mcp`
-- YouTube Playlist MCP — `https://pl.thevictoriacross.net/mcp` (OAuth)
+**Example endpoints (replace with your own hostnames)**
+- YouTube MCP — `https://youtube.example.com/mcp`
+- YouTube Playlist MCP — `https://playlist.example.com/mcp` (OAuth)
 
-**Status** — Production. In daily use across multiple MCP clients.
+**Status (2026-10-15)** — YouTube runs on an independent ARM64 VM behind its
+own Cloudflare tunnel with mandatory bearer authentication. Claude connects
+and discovers all five tools; public SDK search/transcript checks passed.
+Claude conversation and Android/PC-off acceptance remain pending. Playlist
+remains on its existing deployment; its source authentication changes are not
+yet deployed. See [VM operations](deploy/README.md) and [authentication](AUTH-ROLLOUT.md).
 
 ---
 
@@ -14,7 +19,9 @@ Two production [Model Context Protocol](https://modelcontextprotocol.io) servers
 
 ### `youtube/` — read-only YouTube tools
 
-Stateless, no credentials required:
+No Google account credentials required. MCP access requires a signed bearer
+token. Captions/languages use anonymous FreeTranscriptAPI and persistent cache;
+see [VM operations](deploy/README.md) for free-tier limits and isolation.
 
 | Tool | Purpose |
 |---|---|
@@ -26,7 +33,7 @@ Stateless, no credentials required:
 
 ### `youtube-playlist/` — authenticated playlist management
 
-Per-user, via Google OAuth 2.0:
+Uses the server owner's Google OAuth 2.0 account (shared by authorized clients):
 
 | Tool | Purpose |
 |---|---|
@@ -41,19 +48,24 @@ Per-user, via Google OAuth 2.0:
 
 ## Architecture
 
+```text
+Claude cloud / bearer-capable MCP client
+                | HTTPS + Authorization: Bearer ...
+                v
+Dedicated YouTube Cloudflare tunnel (VM, outbound connection)
+                |
+                v
+127.0.0.1:8002 -> mcp-youtube.service
+                  |-- public YouTube search/metadata/channel data
+                  `-- FreeTranscriptAPI -> persistent SQLite cache
+
+Separate existing Windows deployment: Playlist + Google OAuth
+Shared Windows tunnel also carries Ollama; it is not moved or stopped.
 ```
-   MCP-compatible client (Cursor, Cline, Claude Desktop, etc.)
-                  │
-                  │  HTTPS  (MCP Streamable HTTP transport)
-                  ▼
-        Cloudflare edge   ── TLS termination, no inbound port on host
-                  │
-                  │  Cloudflare Tunnel (outbound dial from host)
-                  ▼
-     Host (Windows, supervised by NSSM)
-       ├── youtube_mcp.py            FastMCP · port 8002 · stateless
-       └── youtube_playlist_mcp.py   FastMCP · port 8003 · OAuth + pickled tokens
-```
+
+YouTube has its own code, virtualenv, users, units, configuration, signing key
+and state, independent of Early Signals. Removing the Early Signals application
+does not remove this MCP. Rebuilding the entire VM still affects both.
 
 ### Why this shape
 
@@ -63,8 +75,9 @@ stdio MCP only works for a client on the same machine. HTTP transport means any 
 **Cloudflare Tunnel over port forwarding.**
 No router config, no static IP, automatic TLS via Cloudflare's cert, free tier. The host never accepts inbound connections — it dials out to the edge. For a home-hosted service that authenticates to Google OAuth, this is the cleanest secure path.
 
-**Two servers, two subdomains, one tunnel.**
-A single `cloudflared` ingress block routes by hostname → local port. Responsibilities stay separated (the read-only YouTube server holds no credentials; the Playlist server is the only one with OAuth tokens) and each can be restarted independently.
+**Separate services and tunnels.**
+The read-only YouTube service has its own VM tunnel and no Google OAuth tokens.
+Playlist remains separate on Windows. Neither service depends on Early Signals.
 
 **yt-dlp for search, Google API only for mutations.**
 YouTube Data API quota is 10,000 units/day. Search costs 100 units; insert costs 50. By using yt-dlp for the search half of `search_and_add`, a single tool call can search-and-add 20+ videos without burning the daily budget. The API is invoked only where there's no alternative.
@@ -81,11 +94,11 @@ The MCP client never sees Google credentials. Refresh handled automatically on t
 
 - **Language** — Python 3.12
 - **MCP framework** — [FastMCP](https://github.com/jlowin/fastmcp) 3.x (Streamable HTTP transport)
-- **YouTube data** — `yt-dlp` (search, metadata, channel videos), `youtube-transcript-api` (transcripts), Google API client (playlist mutations)
+- **YouTube data** — `yt-dlp` (search, metadata, channel videos), anonymous FreeTranscriptAPI (transcripts/languages with persistent cache), Google API client (playlist mutations)
 - **OAuth** — `google-auth-oauthlib` (Installed App flow, local browser redirect)
 - **HTTP runtime** — Uvicorn / Starlette (via FastMCP)
-- **Tunnel** — `cloudflared`, supervised by NSSM on Windows
-- **Process supervision** — NSSM (Windows). Migration to systemd on Oracle Cloud ARM planned.
+- **Tunnel** — dedicated `cloudflared` under systemd for VM YouTube; existing Windows tunnel kept separate
+- **Process supervision** — systemd for VM YouTube; existing NSSM for Windows Playlist
 
 
 ---
@@ -108,31 +121,28 @@ pip install -r requirements.txt
 #    Save the downloaded JSON as `youtube-playlist/config/google_oauth_client.json`
 #    The first authenticated call will open a browser for authorisation.
 
-# 3. Run either server
+# 3. Set MCP_AUTH_PUBLIC_KEY_FILE to your RSA public PEM file in the environment.
+#    See AUTH-ROLLOUT.md for token audiences and client configuration.
+# 4. Run either server
 python youtube/youtube_mcp.py --port 8002
 python youtube-playlist/youtube_playlist_mcp.py --port 8003
 ```
 
 ### Connect from a client
 
-Add to your MCP client config (the example below uses Claude Desktop's `claude_desktop_config.json` format — Cursor, Cline, and other clients use similar structures):
+For Claude web/mobile, add a custom web connector with the public YouTube MCP
+URL and a fixed `authorization` request header whose value is `Bearer <token>`.
+Use the same Claude account on Android. The VM server and tunnel run without
+the PC; the actual Android/PC-off acceptance test is still pending.
 
-```json
-{
-  "mcpServers": {
-    "youtube": {
-      "url": "http://127.0.0.1:8002/mcp",
-      "transport": "http"
-    },
-    "youtube-playlist": {
-      "url": "http://127.0.0.1:8003/mcp",
-      "transport": "http"
-    }
-  }
-}
-```
+For other clients, use their documented remote Streamable HTTP configuration
+and secret storage to supply this header on every request. Do not put a real
+token in a checked-in JSON configuration. A generic remote URL stanza is not a
+verified Claude Desktop local-config integration.
 
-Restart the client. The Playlist server triggers OAuth on first authenticated call.
+The Playlist source requires a separate `youtube-playlist` audience bearer.
+Its Google OAuth flow still authorizes the server owner's Google account.
+Do not replace the existing Playlist service until its clients are validated.
 
 ---
 
@@ -160,17 +170,12 @@ Every tool returns either a success dict or `{"error": "..."}`. This keeps the s
 
 ## Roadmap
 
-- [ ] **Migrate to Oracle Cloud ARM Always Free** (4 vCPU / 24 GB) — frees the home machine and gives 24/7 uptime independent of local power. Process supervision moves from NSSM → systemd in the process.
+- [x] **Independent ARM64 YouTube deployment** — systemd, dedicated tunnel,
+  bearer authentication, cache and Claude connector discovery.
+- [ ] **Claude conversation and Android/PC-off acceptance** — the full chat test has not been completed. Old PC YouTube service retirement is separate.
 - [ ] **Eval suite** — structured tests for tool correctness (transcript fidelity, playlist mutations idempotent under retry), regression-tracked across deployments. LLM-as-Judge for transcript-quality scoring.
 - [ ] **RAG surface** — a third server adding transcript retrieval + synthesis, turning the stack into a working RAG-over-MCP demo.
 - [ ] **First-class OAuth callback** — current flow relies on a locally bound port; move to a portable headless flow for cloud deployment.
 - [ ] **Observability** — Cloudflare analytics on tunnel uptime + per-tool latency, exported.
 
 ---
-
-## About
-
-Built and operated by **Sorin Hinceanu** — thirteen years in telecoms infrastructure field engineering (Openreach FTTP, ranked top contractor of 200+), now building agentic AI tooling and self-hosted MCP infrastructure end-to-end.
-
-- Location — London, UK
-- Email — sorinbrocker@yahoo.com
